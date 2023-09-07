@@ -35,7 +35,7 @@ public class TCPTransport: Transport {
     private weak var delegate: TransportEventClient?
     private var isRunning = false
     private var isTLS = false
-    private var useTLS12OrGreater = false
+    private var minTLSVersion: TLSVersion?
     
     public var usingTLS: Bool {
         return self.isTLS
@@ -46,8 +46,8 @@ public class TCPTransport: Transport {
         start()
     }
     
-    public init(useTLS12OrGreater: Bool = false) {
-        self.useTLS12OrGreater = useTLS12OrGreater
+    public init(minTLSVersion: TLSVersion? = nil) {
+        self.minTLSVersion = minTLSVersion
         //normal connection, will use the "connect" method below
     }
 
@@ -62,8 +62,8 @@ public class TCPTransport: Transport {
 
         let tlsOptions = isTLS ? NWProtocolTLS.Options() : nil
         if let tlsOpts = tlsOptions {
-            if #available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *), useTLS12OrGreater {
-                sec_protocol_options_set_min_tls_protocol_version(tlsOpts.securityProtocolOptions, .TLSv12)
+            if #available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *), let minTLSVersion = minTLSVersion {
+                sec_protocol_options_set_min_tls_protocol_version(tlsOpts.securityProtocolOptions, minTLSVersion.secValue)
             }
 
             sec_protocol_options_set_verify_block(tlsOpts.securityProtocolOptions, { (sec_protocol_metadata, sec_trust, sec_protocol_verify_complete) in
