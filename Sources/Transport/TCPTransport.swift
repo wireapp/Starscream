@@ -35,6 +35,7 @@ public class TCPTransport: Transport {
     private weak var delegate: TransportEventClient?
     private var isRunning = false
     private var isTLS = false
+    private var useTLS12OrGreater = false
     
     public var usingTLS: Bool {
         return self.isTLS
@@ -45,10 +46,11 @@ public class TCPTransport: Transport {
         start()
     }
     
-    public init() {
+    public init(useTLS12OrGreater: Bool = false) {
+        self.useTLS12OrGreater = useTLS12OrGreater
         //normal connection, will use the "connect" method below
     }
-    
+
     public func connect(url: URL, timeout: Double = 10, certificatePinning: CertificatePinning? = nil) {
         guard let parts = url.getParts() else {
             delegate?.connectionChanged(state: .failed(TCPTransportError.invalidRequest))
@@ -60,6 +62,10 @@ public class TCPTransport: Transport {
 
         let tlsOptions = isTLS ? NWProtocolTLS.Options() : nil
         if let tlsOpts = tlsOptions {
+            if #available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *), useTLS12OrGreater {
+                sec_protocol_options_set_min_tls_protocol_version(tlsOpts.securityProtocolOptions, .TLSv12)
+            }
+
             sec_protocol_options_set_verify_block(tlsOpts.securityProtocolOptions, { (sec_protocol_metadata, sec_trust, sec_protocol_verify_complete) in
                 let trust = sec_trust_copy_ref(sec_trust).takeRetainedValue()
                 guard let pinner = certificatePinning else {
