@@ -87,6 +87,45 @@ public enum WebSocketEvent {
     case cancelled
 }
 
+public enum TLSVersion: Int {
+
+    case v1_0
+    case v1_1
+    case v1_2
+    case v1_3
+
+    @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+    init?(_ secValue: tls_protocol_version_t) {
+        switch secValue {
+        case .TLSv10:
+            self = .v1_0
+        case .TLSv11:
+            self = .v1_1
+        case .TLSv12:
+            self = .v1_2
+        case .TLSv13:
+            self = .v1_3
+        default:
+            return nil
+        }
+    }
+
+    @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+    var secValue: tls_protocol_version_t {
+        switch self {
+        case .v1_0:
+            return .TLSv10
+        case .v1_1:
+            return .TLSv11
+        case .v1_2:
+            return .TLSv12
+        case .v1_3:
+            return .TLSv13
+        }
+    }
+
+}
+
 public protocol WebSocketDelegate: AnyObject {
     func didReceive(event: WebSocketEvent, client: WebSocketClient)
 }
@@ -116,11 +155,11 @@ open class WebSocket: WebSocketClient, EngineDelegate {
         self.engine = engine
     }
     
-    public convenience init(request: URLRequest, certPinner: CertificatePinning? = FoundationSecurity(), compressionHandler: CompressionHandler? = nil, useCustomEngine: Bool = true) {
+    public convenience init(request: URLRequest, certPinner: CertificatePinning? = FoundationSecurity(), compressionHandler: CompressionHandler? = nil, useCustomEngine: Bool = true, minTLSVersion: TLSVersion? = nil) {
         if #available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *), !useCustomEngine {
-            self.init(request: request, engine: NativeEngine())
+            self.init(request: request, engine: NativeEngine(minTLSVersion: minTLSVersion))
         } else if #available(macOS 10.14, iOS 12.0, watchOS 5.0, tvOS 12.0, *) {
-            self.init(request: request, engine: WSEngine(transport: TCPTransport(), certPinner: certPinner, compressionHandler: compressionHandler))
+            self.init(request: request, engine: WSEngine(transport: TCPTransport(minTLSVersion: minTLSVersion), certPinner: certPinner, compressionHandler: compressionHandler))
         } else {
             self.init(request: request, engine: WSEngine(transport: FoundationTransport(), certPinner: certPinner, compressionHandler: compressionHandler))
         }

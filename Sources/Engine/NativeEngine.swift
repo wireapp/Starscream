@@ -11,7 +11,12 @@ import Foundation
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public class NativeEngine: NSObject, Engine, URLSessionDataDelegate, URLSessionWebSocketDelegate {
     private var task: URLSessionWebSocketTask?
+    private var minTLSVersion: TLSVersion?
     weak var delegate: EngineDelegate?
+
+    init(minTLSVersion: TLSVersion? = nil) {
+        self.minTLSVersion = minTLSVersion
+    }
 
     public func register(delegate: EngineDelegate) {
         self.delegate = delegate
@@ -19,6 +24,15 @@ public class NativeEngine: NSObject, Engine, URLSessionDataDelegate, URLSessionW
 
     public func start(request: URLRequest, configuration: URLSessionConfiguration?) {
         let sessionConfiguration: URLSessionConfiguration = configuration ?? URLSessionConfiguration.default
+
+        if
+            let minTLSVersionToUse = minTLSVersion,
+            let currentMinTLSVersion = TLSVersion(sessionConfiguration.tlsMinimumSupportedProtocolVersion),
+            minTLSVersionToUse.rawValue > currentMinTLSVersion.rawValue
+        {
+            sessionConfiguration.tlsMinimumSupportedProtocolVersion = minTLSVersionToUse.secValue
+        }
+
         let session = URLSession(configuration: sessionConfiguration, delegate: self, delegateQueue: nil)
         task = session.webSocketTask(with: request)
         doRead()
